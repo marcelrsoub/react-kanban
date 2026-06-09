@@ -1,4 +1,4 @@
-import { KanbanBoard, KanbanCard, KanbanColumn } from "./types";
+import { KanbanBoard, KanbanColumn } from "./types";
 
 const FRONTMATTER_DELIMITER = "---";
 

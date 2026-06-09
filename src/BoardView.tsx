@@ -25,6 +25,13 @@ type CardMenuState = {
   y: number;
 };
 
+type ConfirmDialogState = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+};
+
 const CARD_GROUP_PREFIX = "cards:";
 
 function cardGroupId(columnId: string) {
@@ -165,6 +172,7 @@ function SortableCard({
   columnId,
   index,
   card,
+  app,
   component,
   sourcePath,
   onOpen,
@@ -174,6 +182,7 @@ function SortableCard({
   columnId: string;
   index: number;
   card: KanbanCard;
+  app: App;
   component: Component;
   sourcePath: string;
   onOpen: (card: KanbanCard) => void;
@@ -210,7 +219,7 @@ function SortableCard({
         event.preventDefault();
         event.stopPropagation();
         const cardEl = event.currentTarget as HTMLElement;
-        const boardEl = cardEl.closest(".react-kanban-view") as HTMLElement | null;
+        const boardEl = cardEl.closest(".react-kanban-view");
         const cardRect = cardEl.getBoundingClientRect();
         const boardRect = boardEl?.getBoundingClientRect() ?? { left: 0, top: 0 };
         onOpenMenu(card.id, cardRect.left - boardRect.left + 12, cardRect.bottom - boardRect.top + 8);
@@ -230,23 +239,25 @@ function SortableCard({
         }}
       >
       </button>
-      <MarkdownCardContent markdown={card.content} component={component} sourcePath={sourcePath} />
+      <MarkdownCardContent app={app} markdown={card.content} component={component} sourcePath={sourcePath} />
     </div>
   );
 }
 
 function CardPreview({
   card,
+  app,
   component,
   sourcePath
 }: {
   card: KanbanCard;
+  app: App;
   component: Component;
   sourcePath: string;
 }) {
   return (
     <div className={`react-kanban-card ${card.completed ? "is-completed" : ""} is-dragging`}>
-      <MarkdownCardContent markdown={card.content} component={component} sourcePath={sourcePath} />
+      <MarkdownCardContent app={app} markdown={card.content} component={component} sourcePath={sourcePath} />
     </div>
   );
 }
@@ -350,11 +361,45 @@ function CardMenu({
   );
 }
 
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel
+}: ConfirmDialogState & { onCancel: () => void }) {
+  return (
+    <div className="react-kanban-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
+      <div className="react-kanban-dialog react-kanban-confirm-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="react-kanban-dialog-header">
+          <div>
+            <h3>{title}</h3>
+            <p>{message}</p>
+          </div>
+          <button type="button" className="react-kanban-icon-button" aria-label="Close dialog" title="Close dialog" onClick={onCancel}>
+            ×
+          </button>
+        </div>
+        <div className="react-kanban-dialog-footer">
+          <button type="button" className="react-kanban-secondary-button" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" className="react-kanban-danger-button" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MarkdownCardContent({
+  app,
   markdown,
   component,
   sourcePath
 }: {
+  app: App;
   markdown: string;
   component: Component;
   sourcePath: string;
@@ -369,7 +414,7 @@ function MarkdownCardContent({
 
     let cancelled = false;
     clearElementChildren(el);
-    void MarkdownRenderer.renderMarkdown(markdown || " ", el, sourcePath, component).then(() => {
+    void MarkdownRenderer.render(app, markdown || " ", el, sourcePath, component).then(() => {
       if (cancelled || !el.isConnected) {
         clearElementChildren(el);
       }
@@ -378,7 +423,7 @@ function MarkdownCardContent({
     return () => {
       cancelled = true;
     };
-  }, [component, markdown, sourcePath]);
+  }, [app, component, markdown, sourcePath]);
 
   return <div ref={ref} className="react-kanban-card-markdown" />;
 }
@@ -474,6 +519,7 @@ function ComposerDialog({
 function ColumnView({
   index,
   column,
+  app,
   component,
   sourcePath,
   onAddCard,
@@ -492,6 +538,7 @@ function ColumnView({
 }: {
   index: number;
   column: KanbanColumn;
+  app: App;
   component: Component;
   sourcePath: string;
   onAddCard: (columnId: string, text: string) => void;
@@ -611,6 +658,7 @@ function ColumnView({
             columnId={column.id}
             index={column.cards.findIndex((item) => item.id === card.id)}
             card={card}
+            app={app}
             component={component}
             sourcePath={sourcePath}
             onOpen={onOpenCard}
@@ -627,6 +675,7 @@ function ColumnView({
             columnId={column.id}
             index={column.cards.findIndex((item) => item.id === card.id)}
             card={card}
+            app={app}
             component={component}
             sourcePath={sourcePath}
             onOpen={onOpenCard}
@@ -639,12 +688,13 @@ function ColumnView({
   );
 }
 
-export function BoardView({ file, content, component, onSave }: BoardViewProps) {
+export function BoardView({ app, file, content, component, onSave }: BoardViewProps) {
   const parsed = useMemo(() => parseKanbanMarkdown(content), [content]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [composer, setComposer] = useState<CardComposerState | null>(null);
   const [openMenuColumnId, setOpenMenuColumnId] = useState<string | null>(null);
   const [openCardMenu, setOpenCardMenu] = useState<CardMenuState | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [board, setBoard] = useState<KanbanBoardModel | null>(parsed);
   const boardSnapshot = useRef<KanbanBoardModel | null>(parsed);
   const isDragging = useRef(false);
@@ -775,12 +825,16 @@ export function BoardView({ file, content, component, onSave }: BoardViewProps) 
       return;
     }
 
-    if (!window.confirm(`Delete the column "${column.title}" and all of its cards?`)) {
-      return;
-    }
-
-    updateBoard((current) => deleteColumn(current, columnId));
     setOpenMenuColumnId(null);
+    setConfirmDialog({
+      title: `Delete "${column.title}"?`,
+      message: "This will remove the column and all of its cards.",
+      confirmLabel: "Delete column",
+      onConfirm: () => {
+        updateBoard((current) => deleteColumn(current, columnId));
+        setConfirmDialog(null);
+      }
+    });
   };
 
   const toggleComplete = (cardId: string) => {
@@ -797,12 +851,16 @@ export function BoardView({ file, content, component, onSave }: BoardViewProps) 
       return;
     }
 
-    if (!window.confirm("Delete this card?")) {
-      return;
-    }
-
-    updateBoard((current) => deleteCard(current, cardId));
     setOpenCardMenu(null);
+    setConfirmDialog({
+      title: "Delete card?",
+      message: "This will permanently remove the card from the board.",
+      confirmLabel: "Delete card",
+      onConfirm: () => {
+        updateBoard((current) => deleteCard(current, cardId));
+        setConfirmDialog(null);
+      }
+    });
   };
 
   const startAddCard = (columnId: string) => {
@@ -831,6 +889,7 @@ export function BoardView({ file, content, component, onSave }: BoardViewProps) 
               key={column.id}
               index={index}
               column={column}
+              app={app}
               component={component}
               sourcePath={file.path}
               onAddCard={addCard}
@@ -861,7 +920,7 @@ export function BoardView({ file, content, component, onSave }: BoardViewProps) 
               return null;
             }
 
-            return <CardPreview card={card} component={component} sourcePath={file.path} />;
+            return <CardPreview card={card} app={app} component={component} sourcePath={file.path} />;
           }}
         </DragOverlay>
       </DragDropProvider>
@@ -887,6 +946,12 @@ export function BoardView({ file, content, component, onSave }: BoardViewProps) 
             addCard(composer.columnId, value);
             setComposer(null);
           }}
+        />
+      ) : null}
+      {confirmDialog ? (
+        <ConfirmDialog
+          {...confirmDialog}
+          onCancel={() => setConfirmDialog(null)}
         />
       ) : null}
     </div>

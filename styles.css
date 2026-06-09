@@ -222,7 +222,6 @@
 
 .react-kanban-card.is-completed .react-kanban-card-markdown {
   text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
 }
 
 .react-kanban-card-checkbox {
@@ -339,7 +338,7 @@
 
 .react-kanban-column-menu-close {
   margin-top: 2px;
-  border-top: 1px solid var(--rk-border) !important;
+  border-top: 1px solid var(--rk-border);
 }
 
 .react-kanban-card-menu-backdrop {
@@ -387,7 +386,7 @@
 
 .react-kanban-card-menu-close {
   margin-top: 2px;
-  border-top: 1px solid var(--rk-border) !important;
+  border-top: 1px solid var(--rk-border);
 }
 
 .react-kanban-dialog-backdrop {
@@ -446,6 +445,25 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 14px;
+}
+
+.react-kanban-confirm-dialog {
+  max-width: 480px;
+}
+
+.react-kanban-danger-button {
+  border-radius: 12px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--text-error) 55%, transparent);
+  background: color-mix(in srgb, var(--text-error) 14%, transparent);
+  color: color-mix(in srgb, var(--text-error) 96%, white);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.react-kanban-danger-button:hover {
+  background: color-mix(in srgb, var(--text-error) 20%, transparent);
 }
 
 .react-kanban-secondary-button,

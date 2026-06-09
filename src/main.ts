@@ -155,10 +155,6 @@ export default class ReactKanbanPlugin extends Plugin {
     );
   }
 
-  onunload() {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE);
-  }
-
   private isBoardFile(file: TFile) {
     return file.extension === "md";
   }
@@ -173,23 +169,22 @@ export default class ReactKanbanPlugin extends Plugin {
       return;
     }
 
-    const activeLeaf = this.app.workspace.activeLeaf ?? this.app.workspace.getMostRecentLeaf();
-    if (!activeLeaf || activeLeaf.view.getViewType?.() === VIEW_TYPE) {
+    const recentLeaf = this.app.workspace.getMostRecentLeaf();
+    if (!recentLeaf || recentLeaf.view.getViewType?.() === VIEW_TYPE) {
       return;
     }
 
     this.isAutoSwitching = true;
     try {
-      await this.openBoard(file, activeLeaf);
+      await this.openBoard(file, recentLeaf);
     } finally {
       this.isAutoSwitching = false;
     }
   }
 
-  private async openBoard(file: TFile, leaf = this.app.workspace.activeLeaf ?? this.app.workspace.getMostRecentLeaf()) {
+  private async openBoard(file: TFile, leaf = this.app.workspace.getMostRecentLeaf()) {
     const targetLeaf = leaf ?? this.app.workspace.getLeaf(true);
     await targetLeaf.setViewState({ type: VIEW_TYPE, active: true, state: { path: file.path } });
-    await this.app.workspace.revealLeaf(targetLeaf);
     const view = targetLeaf.view;
     if (view instanceof ReactKanbanItemView) {
       await view.setState({ path: file.path });
