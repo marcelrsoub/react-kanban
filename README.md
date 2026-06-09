@@ -13,6 +13,10 @@ React Kanban is an Obsidian plugin that opens markdown-based kanban notes in a m
 - Mark cards complete and keep completed cards grouped at the bottom of each column
 - Delete cards from the right-click menu
 
+## Demo
+
+![React Kanban demo](assets/demo.gif)
+
 ## Markdown Format
 
 The plugin understands standard heading-based kanban notes:

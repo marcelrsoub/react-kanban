@@ -407,9 +407,26 @@ function ComposerDialog({
     textareaRef.current?.focus();
   }, []);
 
+  function submitCurrentValue() {
+    const nextValue = value.trim();
+    if (nextValue) {
+      onSubmit(nextValue);
+    }
+  }
+
   return (
     <div className="react-kanban-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
-      <div className="react-kanban-dialog" role="dialog" aria-modal="true" aria-labelledby="react-kanban-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+      <form
+        className="react-kanban-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="react-kanban-dialog-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitCurrentValue();
+        }}
+      >
         <div className="react-kanban-dialog-header">
           <div>
             <h3 id="react-kanban-dialog-title">{title}</h3>
@@ -425,15 +442,18 @@ function ComposerDialog({
           value={value}
           placeholder={placeholder}
           onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+          onKeyDownCapture={(event) => {
+            const isShortcut =
+              event.key === "Enter" &&
+              (event.metaKey || event.ctrlKey || event.getModifierState("Meta") || event.getModifierState("Control"));
+            if (isShortcut) {
               event.preventDefault();
-              if (value.trim()) {
-                onSubmit(value.trim());
-              }
+              event.stopPropagation();
+              event.currentTarget.form?.requestSubmit();
             }
             if (event.key === "Escape") {
               event.preventDefault();
+              event.stopPropagation();
               onCancel();
             }
           }}
@@ -442,11 +462,11 @@ function ComposerDialog({
           <button type="button" className="react-kanban-secondary-button" onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className="react-kanban-primary-button" onClick={() => value.trim() && onSubmit(value.trim())}>
+          <button type="submit" className="react-kanban-primary-button">
             {submitLabel}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
