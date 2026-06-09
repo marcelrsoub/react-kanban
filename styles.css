@@ -1,0 +1,477 @@
+.react-kanban-view {
+  position: relative;
+  --rk-bg: var(--background-primary);
+  --rk-panel: color-mix(in srgb, var(--background-secondary) 82%, transparent);
+  --rk-panel-strong: color-mix(in srgb, var(--background-secondary) 94%, black 6%);
+  --rk-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  --rk-text: var(--text-normal);
+  --rk-muted: var(--text-muted);
+  --rk-accent: var(--interactive-accent);
+  --rk-accent-soft: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--rk-bg);
+}
+
+.react-kanban-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rk-border);
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.react-kanban-toolbar h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rk-muted);
+}
+
+.react-kanban-toolbar .status {
+  font-size: 12px;
+  color: var(--rk-muted);
+}
+
+.react-kanban-board {
+  flex: 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(280px, 1fr);
+  gap: 14px;
+  padding: 16px;
+  overflow: auto;
+}
+
+.react-kanban-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--rk-border);
+  border-radius: 18px;
+  background: var(--rk-panel);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.react-kanban-column.is-dragging {
+  z-index: 5;
+  opacity: 0.95;
+}
+
+.react-kanban-column.is-drop-target {
+  border-color: color-mix(in srgb, var(--rk-accent) 32%, var(--rk-border));
+}
+
+.react-kanban-column-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--rk-border);
+}
+
+.react-kanban-column-title-wrap {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.react-kanban-column-handle {
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.react-kanban-column-handle:active {
+  cursor: grabbing;
+}
+
+.react-kanban-column-handle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.react-kanban-column-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.react-kanban-card-count {
+  font-size: 12px;
+  color: var(--rk-muted);
+}
+
+.react-kanban-column-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.react-kanban-title-edit-button,
+.react-kanban-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--rk-muted);
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.react-kanban-column:hover .react-kanban-title-edit-button,
+.react-kanban-column:hover .react-kanban-icon-button,
+.react-kanban-title-edit-button:focus-visible,
+.react-kanban-icon-button:focus-visible {
+  opacity: 1;
+}
+
+.react-kanban-dialog .react-kanban-icon-button {
+  opacity: 1;
+}
+
+.react-kanban-title-edit-button:hover,
+.react-kanban-icon-button:hover {
+  background: var(--rk-accent-soft);
+  color: var(--rk-text);
+  border-color: color-mix(in srgb, var(--rk-accent) 22%, var(--rk-border));
+}
+
+.react-kanban-icon-button:disabled,
+.react-kanban-column-menu button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.react-kanban-column-title-input {
+  min-width: 0;
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid var(--rk-border);
+  background: var(--background-primary);
+  color: var(--rk-text);
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.react-kanban-card-list {
+  flex: 1;
+  min-height: 60px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 0 0 18px 18px;
+  transition: background 120ms ease;
+}
+
+.react-kanban-card-list.is-drop-target {
+  background: color-mix(in srgb, var(--rk-accent-soft) 55%, transparent);
+}
+
+.react-kanban-card {
+  position: relative;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--rk-border);
+  background: var(--rk-panel-strong);
+  color: var(--rk-text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  cursor: grab;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.react-kanban-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--rk-accent) 35%, var(--rk-border));
+}
+
+.react-kanban-card:active {
+  cursor: grabbing;
+}
+
+.react-kanban-card.is-dragging {
+  position: relative;
+  z-index: 50;
+  opacity: 0.92;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+}
+
+.react-kanban-card.is-completed {
+  opacity: 0.82;
+  background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+}
+
+.react-kanban-card.is-completed .react-kanban-card-markdown {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.react-kanban-card-checkbox {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--rk-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.react-kanban-card-checkbox svg {
+  width: 15px;
+  height: 15px;
+}
+
+.react-kanban-card-checkbox:hover {
+  border-color: var(--rk-border);
+  background: var(--rk-accent-soft);
+  color: var(--rk-text);
+}
+
+.react-kanban-card-text {
+  white-space: pre-wrap;
+  line-height: 1.4;
+  font-size: 13px;
+}
+
+.react-kanban-card-markdown {
+  padding-right: 34px;
+}
+
+.react-kanban-toolbar button {
+  border: 1px solid var(--rk-border);
+  background: var(--rk-accent-soft);
+  color: var(--rk-text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.react-kanban-empty {
+  padding: 20px;
+  color: var(--rk-muted);
+  text-align: center;
+}
+
+.react-kanban-completed-spacer {
+  flex: 1;
+  min-height: 18px;
+}
+
+.react-kanban-completed-divider {
+  margin: 8px 0 2px;
+  border-top: 1px solid var(--rk-border);
+}
+
+.react-kanban-completed-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rk-muted);
+  padding: 0 2px;
+}
+
+.react-kanban-column-menu {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  z-index: 20;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--rk-border);
+  background: color-mix(in srgb, var(--background-primary) 96%, black 4%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.react-kanban-column-menu button {
+  border: 0;
+  background: transparent;
+  color: var(--rk-text);
+  text-align: left;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.react-kanban-column-menu button:hover:not(:disabled) {
+  background: var(--rk-accent-soft);
+}
+
+.react-kanban-column-menu .danger {
+  color: color-mix(in srgb, var(--text-error) 90%, var(--rk-text));
+}
+
+.react-kanban-column-menu .danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-error) 12%, transparent);
+}
+
+.react-kanban-column-menu-close {
+  margin-top: 2px;
+  border-top: 1px solid var(--rk-border) !important;
+}
+
+.react-kanban-card-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+}
+
+.react-kanban-card-menu {
+  position: absolute;
+  z-index: 31;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--rk-border);
+  background: color-mix(in srgb, var(--background-primary) 96%, black 4%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.react-kanban-card-menu button {
+  border: 0;
+  background: transparent;
+  color: var(--rk-text);
+  text-align: left;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.react-kanban-card-menu button:hover:not(:disabled) {
+  background: var(--rk-accent-soft);
+}
+
+.react-kanban-card-menu .danger {
+  color: color-mix(in srgb, var(--text-error) 90%, var(--rk-text));
+}
+
+.react-kanban-card-menu .danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-error) 12%, transparent);
+}
+
+.react-kanban-card-menu-close {
+  margin-top: 2px;
+  border-top: 1px solid var(--rk-border) !important;
+}
+
+.react-kanban-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--background-primary) 28%, transparent);
+  backdrop-filter: blur(8px);
+  z-index: 25;
+}
+
+.react-kanban-dialog {
+  width: min(620px, calc(100vw - 32px));
+  border-radius: 20px;
+  border: 1px solid var(--rk-border);
+  background: color-mix(in srgb, var(--background-primary) 96%, black 4%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+  padding: 18px;
+}
+
+.react-kanban-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.react-kanban-dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.react-kanban-dialog-header p {
+  margin: 4px 0 0;
+  color: var(--rk-muted);
+  font-size: 12px;
+}
+
+.react-kanban-dialog-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  border-radius: 14px;
+  border: 1px solid var(--rk-border);
+  background: var(--background-primary);
+  color: var(--rk-text);
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.react-kanban-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.react-kanban-secondary-button,
+.react-kanban-primary-button {
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.react-kanban-secondary-button {
+  border: 1px solid var(--rk-border);
+  background: transparent;
+  color: var(--rk-text);
+}
+
+.react-kanban-primary-button {
+  border: 1px solid color-mix(in srgb, var(--rk-accent) 45%, var(--rk-border));
+  background: var(--rk-accent);
+  color: var(--text-on-accent);
+}
+
+.react-kanban-card-markdown :is(p, ul, ol) {
+  margin: 0 0 0.6em;
+}
+
+.react-kanban-card-markdown :is(p:last-child, ul:last-child, ol:last-child) {
+  margin-bottom: 0;
+}

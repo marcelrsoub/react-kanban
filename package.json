@@ -1,0 +1,25 @@
+{
+  "name": "obsidian-react-kanban",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An Obsidian plugin that renders markdown-backed Kanban boards with React.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.8.0",
+    "@dnd-kit/helpers": "^0.4.0",
+    "@dnd-kit/react": "^0.4.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {}
+}
