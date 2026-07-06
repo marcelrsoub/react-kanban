@@ -61,10 +61,21 @@ export default class ReactKanbanPlugin extends Plugin {
         return;
       }
 
-      el.replaceChildren();
+      const viewRoot = el.closest(".markdown-preview-view, .markdown-reading-view");
+      if (!(viewRoot instanceof HTMLElement)) {
+        return;
+      }
+
+      if (viewRoot.querySelector(".react-kanban-note-shell")) {
+        return;
+      }
+
+      const contentRoot = viewRoot.querySelector(".markdown-preview-sizer") ?? viewRoot;
+      contentRoot.replaceChildren();
+
       const shell = document.createElement("div");
       shell.className = "react-kanban-note-shell";
-      el.appendChild(shell);
+      contentRoot.appendChild(shell);
       ctx.addChild(
         new KanbanRenderChild(shell, {
           app: this.app,
