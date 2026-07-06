@@ -19,6 +19,12 @@ type CardComposerState = {
   content: string;
 };
 
+type CardEditorState = {
+  cardId: string;
+  title: string;
+  content: string;
+};
+
 type CardMenuState = {
   cardId: string;
   x: number;
@@ -336,11 +342,13 @@ function ColumnMenu({
 function CardMenu({
   x,
   y,
+  onEdit,
   onDelete,
   onClose
 }: {
   x: number;
   y: number;
+  onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
@@ -351,6 +359,9 @@ function CardMenu({
       style={{ left: x, top: y }}
       onMouseDown={(event) => event.stopPropagation()}
     >
+      <button type="button" role="menuitem" onClick={onEdit}>
+        Edit card
+      </button>
       <button type="button" role="menuitem" className="danger" onClick={onDelete}>
         Delete card
       </button>
@@ -628,7 +639,6 @@ function ColumnView({
           )}
         </div>
         <div className="react-kanban-column-actions">
-          <span className="react-kanban-card-count">{column.cards.length}</span>
           <IconButton icon="plus" label={`Add card to ${column.title}`} onClick={() => onStartAddCard(column.id)} />
           <IconButton icon="more-vertical" label={`${column.title} menu`} onClick={() => onToggleMenu(menuOpen ? null : column.id)} />
         </div>
@@ -687,14 +697,20 @@ function ColumnView({
 
 export function BoardView({ app, file, content, component, onSave }: BoardViewProps) {
   const parsed = useMemo(() => parseKanbanMarkdown(content), [content]);
+  const viewRef = useRef<HTMLDivElement | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [composer, setComposer] = useState<CardComposerState | null>(null);
+  const [cardEditor, setCardEditor] = useState<CardEditorState | null>(null);
   const [openMenuColumnId, setOpenMenuColumnId] = useState<string | null>(null);
   const [openCardMenu, setOpenCardMenu] = useState<CardMenuState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [board, setBoard] = useState<KanbanBoardModel | null>(parsed);
   const boardSnapshot = useRef<KanbanBoardModel | null>(parsed);
   const isDragging = useRef(false);
+
+  useEffect(() => {
+    viewRef.current?.scrollTo({ left: 0 });
+  }, [file.path]);
 
   useEffect(() => {
     if (!isDragging.current) {
@@ -838,6 +854,24 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
     updateBoard((current) => toggleCardCompletion(current, cardId));
   };
 
+  const openCardEditor = (card: KanbanCard) => {
+    setCardEditor({
+      cardId: card.id,
+      title: "Edit card content",
+      content: card.content
+    });
+  };
+
+  const updateCardContent = (cardId: string, nextContent: string) => {
+    updateBoard((current) => ({
+      ...current,
+      columns: current.columns.map((column) => ({
+        ...column,
+        cards: column.cards.map((card) => (card.id === cardId ? { ...card, content: nextContent } : card))
+      }))
+    }));
+  };
+
   const openCardContextMenu = (cardId: string, x: number, y: number) => {
     setOpenCardMenu({ cardId, x, y });
   };
@@ -874,7 +908,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
   };
 
   return (
-    <div className="react-kanban-view">
+    <div ref={viewRef} className="react-kanban-view">
       <div className="react-kanban-toolbar">
         <h2>{file.basename}</h2>
       </div>
@@ -890,7 +924,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
               sourcePath={file.path}
               onAddCard={addCard}
               onRenameColumn={renameColumn}
-              onOpenCard={() => void 0}
+              onOpenCard={openCardEditor}
               onToggleComplete={toggleComplete}
               onStartAddCard={startAddCard}
               menuOpen={openMenuColumnId === column.id}
@@ -925,10 +959,31 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
           <CardMenu
             x={openCardMenu.x}
             y={openCardMenu.y}
+            onEdit={() => {
+              const card = board.columns.flatMap((column) => column.cards).find((item) => item.id === openCardMenu.cardId);
+              if (card) {
+                openCardEditor(card);
+              }
+              setOpenCardMenu(null);
+            }}
             onDelete={() => deleteCardFromBoard(openCardMenu.cardId)}
             onClose={() => setOpenCardMenu(null)}
           />
         </div>
+      ) : null}
+      {cardEditor ? (
+        <ComposerDialog
+          title={cardEditor.title}
+          label="Use markdown, links, and line breaks. Cmd/Ctrl+Enter saves."
+          submitLabel="Save card"
+          initialValue={cardEditor.content}
+          placeholder="Write the card content..."
+          onCancel={() => setCardEditor(null)}
+          onSubmit={(value) => {
+            updateCardContent(cardEditor.cardId, value);
+            setCardEditor(null);
+          }}
+        />
       ) : null}
       {composer ? (
         <ComposerDialog
