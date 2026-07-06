@@ -14,6 +14,27 @@
   background: var(--rk-bg);
 }
 
+.react-kanban-note-shell {
+  width: 100%;
+  max-width: none;
+  overflow: hidden;
+  margin: 12px 0 20px;
+  height: max(720px, calc(100vh - 180px));
+}
+
+.markdown-preview-view.react-kanban-embedded .markdown-preview-sizer,
+.markdown-reading-view.react-kanban-embedded .markdown-preview-sizer {
+  display: none;
+}
+
+.markdown-preview-view:has(.react-kanban-note-shell) .markdown-preview-sizer,
+.markdown-reading-view:has(.react-kanban-note-shell) .markdown-preview-sizer {
+  max-width: none;
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .react-kanban-toolbar {
   display: flex;
   align-items: center;
@@ -43,6 +64,8 @@
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(280px, 1fr);
+  grid-auto-rows: minmax(0, 1fr);
+  align-items: stretch;
   gap: 14px;
   padding: 16px;
   overflow: auto;
@@ -180,6 +203,8 @@
   flex-direction: column;
   gap: 10px;
   border-radius: 0 0 18px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   transition: background 120ms ease;
 }
 
@@ -260,7 +285,10 @@
 }
 
 .react-kanban-card-markdown {
+  min-width: 0;
   padding-right: 34px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .react-kanban-toolbar button {
@@ -492,4 +520,18 @@
 
 .react-kanban-card-markdown :is(p:last-child, ul:last-child, ol:last-child) {
   margin-bottom: 0;
+}
+
+.react-kanban-card-markdown :is(ul, ol) {
+  padding-left: 1.25em;
+}
+
+.react-kanban-card-markdown :is(li) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.react-kanban-card-markdown :is(li > p, li > ul, li > ol) {
+  margin-bottom: 0.35em;
 }

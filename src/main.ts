@@ -1,75 +1,42 @@
-import { ItemView, Menu, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { App, MarkdownRenderChild, Menu, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import React from "react";
-import { createRoot, Root } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { BoardView } from "./BoardView";
 import { createStarterBoard, parseKanbanMarkdown } from "./markdown";
 
-const VIEW_TYPE = "react-kanban-view";
+type BoardRenderProps = {
+  app: App;
+  file: TFile;
+  content: string;
+};
 
-class ReactKanbanItemView extends ItemView {
+class KanbanRenderChild extends MarkdownRenderChild {
   private root: Root | null = null;
-  private currentFile: TFile | null = null;
 
-  constructor(leaf: WorkspaceLeaf, private readonly plugin: ReactKanbanPlugin) {
-    super(leaf);
+  constructor(
+    containerEl: HTMLElement,
+    private readonly props: BoardRenderProps
+  ) {
+    super(containerEl);
   }
 
-  getViewType() {
-    return VIEW_TYPE;
-  }
-
-  getDisplayText() {
-    return "Kanban";
-  }
-
-  getIcon() {
-    return "layout-board";
-  }
-
-  async onOpen() {
-    this.root = createRoot(this.contentEl);
-    this.containerEl.addClass("react-kanban-view-root");
-    await this.render();
-  }
-
-  getState() {
-    return {
-      path: this.currentFile?.path ?? null
-    };
-  }
-
-  async setState(state: { path?: string | null }, _result?: unknown) {
-    const candidate = state.path ? this.app.vault.getAbstractFileByPath(state.path) : null;
-    this.currentFile = candidate instanceof TFile ? candidate : null;
-    await this.render();
-  }
-
-  async render() {
-    if (!this.root) {
-      return;
-    }
-
-    const file = this.currentFile ?? this.app.workspace.getActiveFile();
-    if (!file) {
-      this.root.render(React.createElement("div", { className: "react-kanban-empty" }, "Open a Kanban markdown file to get started."));
-      return;
-    }
-
-    const content = await this.app.vault.read(file);
+  onload() {
+    this.containerEl.replaceChildren();
+    this.root = createRoot(this.containerEl);
     this.root.render(
       React.createElement(BoardView, {
-        app: this.app,
+        app: this.props.app,
         component: this,
-        file,
-        content,
+        file: this.props.file,
+        content: this.props.content,
         onSave: async (nextContent: string) => {
-          await this.app.vault.modify(file, nextContent);
+          await this.props.app.vault.modify(this.props.file, nextContent);
         }
       })
     );
   }
 
-  async onClose() {
+  onunload() {
     this.root?.unmount();
     this.root = null;
   }
@@ -79,23 +46,41 @@ export default class ReactKanbanPlugin extends Plugin {
   private isAutoSwitching = false;
 
   async onload() {
-    this.registerView(VIEW_TYPE, (leaf) => new ReactKanbanItemView(leaf, this));
-
-    this.registerEvent(
-      this.app.workspace.on("file-open", (file) => {
-        if (!file || file.extension !== "md") {
-          return;
-        }
-
-        void this.tryAutoOpen(file);
-      })
-    );
-
-    this.app.workspace.onLayoutReady(() => {
-      const file = this.app.workspace.getActiveFile();
-      if (file?.extension === "md") {
-        void this.tryAutoOpen(file);
+    this.registerMarkdownPostProcessor(async (el, ctx) => {
+      if (ctx.frontmatter?.["kanban-plugin"] !== "board") {
+        return;
       }
+
+      const abstract = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
+      if (!(abstract instanceof TFile)) {
+        return;
+      }
+
+      const content = await this.app.vault.read(abstract);
+      if (!parseKanbanMarkdown(content)) {
+        return;
+      }
+
+      const viewEl = el.closest(".markdown-preview-view, .markdown-reading-view");
+      if (!viewEl) {
+        return;
+      }
+
+      viewEl.classList.add("react-kanban-embedded");
+      if (viewEl.querySelector(".react-kanban-note-shell")) {
+        return;
+      }
+
+      const shell = document.createElement("div");
+      shell.className = "react-kanban-note-shell";
+      viewEl.appendChild(shell);
+      ctx.addChild(
+        new KanbanRenderChild(shell, {
+          app: this.app,
+          file: abstract,
+          content
+        })
+      );
     });
 
     this.addCommand({
@@ -129,6 +114,16 @@ export default class ReactKanbanPlugin extends Plugin {
         await this.openBoard(file);
       }
     });
+
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (!file || file.extension !== "md") {
+          return;
+        }
+
+        void this.tryAutoOpen(file);
+      })
+    );
 
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu: Menu, file) => {
@@ -170,24 +165,27 @@ export default class ReactKanbanPlugin extends Plugin {
     }
 
     const recentLeaf = this.app.workspace.getMostRecentLeaf();
-    if (!recentLeaf || recentLeaf.view.getViewType?.() === VIEW_TYPE) {
+    if (!recentLeaf) {
       return;
     }
 
-    this.isAutoSwitching = true;
-    try {
-      await this.openBoard(file, recentLeaf);
-    } finally {
-      this.isAutoSwitching = false;
-    }
+    await this.openBoard(file, recentLeaf);
   }
 
   private async openBoard(file: TFile, leaf = this.app.workspace.getMostRecentLeaf()) {
     const targetLeaf = leaf ?? this.app.workspace.getLeaf(true);
-    await targetLeaf.setViewState({ type: VIEW_TYPE, active: true, state: { path: file.path } });
-    const view = targetLeaf.view;
-    if (view instanceof ReactKanbanItemView) {
-      await view.setState({ path: file.path });
+    this.isAutoSwitching = true;
+    try {
+      await targetLeaf.setViewState({
+        active: true,
+        type: "markdown",
+        state: {
+          file: file.path,
+          mode: "preview"
+        }
+      } as any);
+    } finally {
+      this.isAutoSwitching = false;
     }
   }
 
