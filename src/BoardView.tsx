@@ -618,17 +618,14 @@ function ColumnView({
               }}
             />
           ) : (
-            <h3 className="react-kanban-column-title">{column.title}</h3>
+            <h3
+              className="react-kanban-column-title"
+              title="Double-click to rename"
+              onDoubleClick={() => setIsEditingTitle(true)}
+            >
+              {column.title}
+            </h3>
           )}
-          <button
-            type="button"
-            className="react-kanban-title-edit-button"
-            aria-label={`Edit ${column.title}`}
-            title={`Edit ${column.title}`}
-            onClick={() => setIsEditingTitle(true)}
-          >
-            ✎
-          </button>
         </div>
         <div className="react-kanban-column-actions">
           <span className="react-kanban-card-count">{column.cards.length}</span>
@@ -880,7 +877,6 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
     <div className="react-kanban-view">
       <div className="react-kanban-toolbar">
         <h2>{file.basename}</h2>
-        <span className="status">{board.columns.reduce((sum, column) => sum + column.cards.length, 0)} cards</span>
       </div>
       <DragDropProvider onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
         <div className="react-kanban-board">

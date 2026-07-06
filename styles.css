@@ -38,24 +38,19 @@
 .react-kanban-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--rk-border);
-  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
-  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--background-primary) 94%, transparent);
 }
 
 .react-kanban-toolbar h2 {
   margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--rk-muted);
-}
-
-.react-kanban-toolbar .status {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rk-muted);
 }
 
@@ -128,6 +123,7 @@
   font-weight: 700;
   line-height: 1.2;
   word-break: break-word;
+  cursor: text;
 }
 
 .react-kanban-card-count {
@@ -142,7 +138,6 @@
   flex-shrink: 0;
 }
 
-.react-kanban-title-edit-button,
 .react-kanban-icon-button {
   display: inline-flex;
   align-items: center;
@@ -159,9 +154,7 @@
   transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.react-kanban-column:hover .react-kanban-title-edit-button,
 .react-kanban-column:hover .react-kanban-icon-button,
-.react-kanban-title-edit-button:focus-visible,
 .react-kanban-icon-button:focus-visible {
   opacity: 1;
 }
@@ -170,7 +163,6 @@
   opacity: 1;
 }
 
-.react-kanban-title-edit-button:hover,
 .react-kanban-icon-button:hover {
   background: var(--rk-accent-soft);
   color: var(--rk-text);
