@@ -22,6 +22,11 @@
   height: max(720px, calc(100vh - 180px));
 }
 
+.markdown-preview-view.react-kanban-embedded .markdown-preview-sizer,
+.markdown-reading-view.react-kanban-embedded .markdown-preview-sizer {
+  display: none;
+}
+
 .markdown-preview-view:has(.react-kanban-note-shell) .markdown-preview-sizer,
 .markdown-reading-view:has(.react-kanban-note-shell) .markdown-preview-sizer {
   max-width: none;
