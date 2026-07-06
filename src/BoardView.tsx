@@ -236,7 +236,6 @@ function SortableCard({
         type="button"
         className="react-kanban-card-checkbox"
         aria-label={card.completed ? "Mark card incomplete" : "Mark card complete"}
-        title={card.completed ? "Mark card incomplete" : "Mark card complete"}
         onPointerDown={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
@@ -300,7 +299,7 @@ function IconButton({
   }, [icon]);
 
   return (
-    <button ref={ref} type="button" className={`react-kanban-icon-button ${className ?? ""}`.trim()} aria-label={label} title={label} onClick={onClick} />
+    <button ref={ref} type="button" className={`clickable-icon react-kanban-icon-button ${className ?? ""}`.trim()} aria-label={label} onClick={onClick} />
   );
 }
 
@@ -322,20 +321,20 @@ function ColumnMenu({
   onClose: () => void;
 }) {
   return (
-    <div className="react-kanban-column-menu" role="menu" aria-label={`${column.title} menu`} onMouseDown={(event) => event.stopPropagation()}>
-      <button type="button" role="menuitem" disabled={!canMoveLeft} onClick={onMoveLeft}>
-        Move column left
-      </button>
-      <button type="button" role="menuitem" disabled={!canMoveRight} onClick={onMoveRight}>
-        Move column right
-      </button>
-      <button type="button" role="menuitem" className="danger" onClick={onDelete}>
-        Delete column
-      </button>
-      <button type="button" className="react-kanban-column-menu-close" onClick={onClose}>
-        Close
-      </button>
-    </div>
+    <>
+      <div className="react-kanban-column-menu-backdrop" role="presentation" onMouseDown={onClose} />
+      <div className="react-kanban-column-menu" role="menu" aria-label={`${column.title} menu`} onMouseDown={(event) => event.stopPropagation()}>
+        <button type="button" role="menuitem" disabled={!canMoveLeft} onClick={onMoveLeft}>
+          Move column left
+        </button>
+        <button type="button" role="menuitem" disabled={!canMoveRight} onClick={onMoveRight}>
+          Move column right
+        </button>
+        <button type="button" role="menuitem" className="danger" onClick={onDelete}>
+          Delete column
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -365,9 +364,6 @@ function CardMenu({
       <button type="button" role="menuitem" className="danger" onClick={onDelete}>
         Delete card
       </button>
-      <button type="button" className="react-kanban-card-menu-close" onClick={onClose}>
-        Close
-      </button>
     </div>
   );
 }
@@ -387,7 +383,7 @@ function ConfirmDialog({
             <h3>{title}</h3>
             <p>{message}</p>
           </div>
-          <button type="button" className="react-kanban-icon-button" aria-label="Close dialog" title="Close dialog" onClick={onCancel}>
+          <button type="button" className="clickable-icon react-kanban-icon-button" aria-label="Close dialog" onClick={onCancel}>
             ×
           </button>
         </div>
@@ -488,7 +484,7 @@ function ComposerDialog({
             <h3 id="react-kanban-dialog-title">{title}</h3>
             <p>{label}</p>
           </div>
-          <button type="button" className="react-kanban-icon-button" aria-label="Close dialog" title="Close dialog" onClick={onCancel}>
+          <button type="button" className="clickable-icon react-kanban-icon-button" aria-label="Close dialog" onClick={onCancel}>
             ×
           </button>
         </div>
