@@ -16,9 +16,18 @@
 
 .react-kanban-note-shell {
   width: 100%;
+  max-width: none;
   overflow: hidden;
   margin: 12px 0 20px;
   height: max(720px, calc(100vh - 180px));
+}
+
+.markdown-preview-view:has(.react-kanban-note-shell) .markdown-preview-sizer,
+.markdown-reading-view:has(.react-kanban-note-shell) .markdown-preview-sizer {
+  max-width: none;
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .react-kanban-toolbar {
