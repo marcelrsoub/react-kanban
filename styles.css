@@ -39,6 +39,23 @@
   display: none;
 }
 
+.markdown-preview-view.react-kanban-embedded,
+.markdown-reading-view.react-kanban-embedded {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.react-kanban-note-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
 .react-kanban-toolbar {
   display: flex;
   align-items: center;
