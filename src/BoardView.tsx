@@ -614,17 +614,13 @@ function ColumnView({
               }}
             />
           ) : (
-            <h3 className="react-kanban-column-title">{column.title}</h3>
+            <h3
+              className="react-kanban-column-title"
+              onDoubleClick={() => setIsEditingTitle(true)}
+            >
+              {column.title}
+            </h3>
           )}
-          <button
-            type="button"
-            className="react-kanban-title-edit-button"
-            aria-label={`Edit ${column.title}`}
-            title={`Edit ${column.title}`}
-            onClick={() => setIsEditingTitle(true)}
-          >
-            ✎
-          </button>
         </div>
         <div className="react-kanban-column-actions">
           <span className="react-kanban-card-count">{column.cards.length}</span>
