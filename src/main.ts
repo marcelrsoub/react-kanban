@@ -39,48 +39,86 @@ class KanbanRenderChild extends MarkdownRenderChild {
   onunload() {
     this.root?.unmount();
     this.root = null;
+
+    const viewEl = this.containerEl.closest<HTMLElement>(".markdown-preview-view, .markdown-reading-view");
+    const sourcePath = this.containerEl.dataset.sourcePath;
+    this.containerEl.remove();
+    if (viewEl && !viewEl.querySelector(".react-kanban-note-shell")) {
+      viewEl.classList.remove("react-kanban-embedded");
+      if (viewEl.dataset.reactKanbanSourcePath === sourcePath) {
+        delete viewEl.dataset.reactKanbanSourcePath;
+      }
+    }
   }
 }
 
 export default class ReactKanbanPlugin extends Plugin {
   private isAutoSwitching = false;
+  private activeFilePath: string | null = null;
+  private mountedBoardChildren = new Set<KanbanRenderChild>();
+  private renderingViews = new WeakMap<HTMLElement, string>();
+  private renderGeneration = 0;
 
   async onload() {
+    this.clearKanbanViewState();
+    this.activeFilePath = this.app.workspace.getActiveFile()?.path ?? null;
+
     this.registerMarkdownPostProcessor(async (el, ctx) => {
-      if (ctx.frontmatter?.["kanban-plugin"] !== "board") {
+      const viewEl = el.closest<HTMLElement>(".markdown-preview-view, .markdown-reading-view");
+      if (!viewEl) {
         return;
       }
+
+      const existingShells = Array.from(viewEl.querySelectorAll<HTMLElement>(".react-kanban-note-shell"));
+      if (viewEl.dataset.reactKanbanSourcePath === ctx.sourcePath && existingShells.length === 1) {
+        return;
+      }
+
+      if (this.renderingViews.get(viewEl) === ctx.sourcePath) {
+        return;
+      }
+
+      existingShells.forEach((shell) => shell.remove());
+      viewEl.classList.remove("react-kanban-embedded");
+      delete viewEl.dataset.reactKanbanSourcePath;
+      this.renderingViews.delete(viewEl);
 
       const abstract = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
       if (!(abstract instanceof TFile)) {
         return;
       }
 
-      const content = await this.app.vault.read(abstract);
-      if (!parseKanbanMarkdown(content)) {
-        return;
-      }
+      const generation = this.renderGeneration;
+      this.renderingViews.set(viewEl, ctx.sourcePath);
+      viewEl.dataset.reactKanbanSourcePath = ctx.sourcePath;
+      try {
+        const content = await this.app.vault.read(abstract);
+        if (!parseKanbanMarkdown(content)) {
+          return;
+        }
 
-      const viewEl = el.closest(".markdown-preview-view, .markdown-reading-view");
-      if (!viewEl) {
-        return;
-      }
+        if (generation !== this.renderGeneration || this.renderingViews.get(viewEl) !== ctx.sourcePath) {
+          return;
+        }
 
-      viewEl.classList.add("react-kanban-embedded");
-      if (viewEl.querySelector(".react-kanban-note-shell")) {
-        return;
-      }
+        viewEl.classList.add("react-kanban-embedded");
 
-      const shell = document.createElement("div");
-      shell.className = "react-kanban-note-shell";
-      viewEl.appendChild(shell);
-      ctx.addChild(
-        new KanbanRenderChild(shell, {
-          app: this.app,
-          file: abstract,
-          content
-        })
-      );
+        const shell = document.createElement("div");
+        shell.className = "react-kanban-note-shell";
+        shell.dataset.sourcePath = ctx.sourcePath;
+        viewEl.appendChild(shell);
+        ctx.addChild(
+          new KanbanRenderChild(shell, {
+            app: this.app,
+            file: abstract,
+            content
+          })
+        );
+      } finally {
+        if (this.renderingViews.get(viewEl) === ctx.sourcePath) {
+          this.renderingViews.delete(viewEl);
+        }
+      }
     });
 
     this.addCommand({
@@ -117,6 +155,12 @@ export default class ReactKanbanPlugin extends Plugin {
 
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
+        const nextPath = file?.path ?? null;
+        if (nextPath !== this.activeFilePath) {
+          this.clearKanbanViewState();
+        }
+        this.activeFilePath = nextPath;
+
         if (!file || file.extension !== "md") {
           return;
         }
@@ -148,6 +192,23 @@ export default class ReactKanbanPlugin extends Plugin {
         );
       })
     );
+
+    const activeFile = this.app.workspace.getActiveFile();
+    if (activeFile?.extension === "md") {
+      void this.tryAutoOpen(activeFile);
+    }
+  }
+
+  private clearKanbanViewState() {
+    this.renderGeneration += 1;
+    this.mountedBoardChildren.forEach((child) => child.unload());
+    this.mountedBoardChildren.clear();
+    document.querySelectorAll<HTMLElement>(".react-kanban-note-shell").forEach((shell) => shell.remove());
+    document.querySelectorAll<HTMLElement>(".react-kanban-embedded").forEach((viewEl) => {
+      viewEl.classList.remove("react-kanban-embedded");
+      delete viewEl.dataset.reactKanbanSourcePath;
+    });
+    this.renderingViews = new WeakMap<HTMLElement, string>();
   }
 
   private isBoardFile(file: TFile) {
@@ -169,10 +230,14 @@ export default class ReactKanbanPlugin extends Plugin {
       return;
     }
 
-    await this.openBoard(file, recentLeaf);
+    await this.openBoard(file, recentLeaf, content);
   }
 
-  private async openBoard(file: TFile, leaf = this.app.workspace.getMostRecentLeaf()) {
+  private async openBoard(
+    file: TFile,
+    leaf = this.app.workspace.getMostRecentLeaf(),
+    content?: string
+  ) {
     const targetLeaf = leaf ?? this.app.workspace.getLeaf(true);
     this.isAutoSwitching = true;
     try {
@@ -184,8 +249,51 @@ export default class ReactKanbanPlugin extends Plugin {
           mode: "preview"
         }
       } as any);
+      const boardContent = content ?? (await this.app.vault.read(file));
+      if (parseKanbanMarkdown(boardContent)) {
+        await this.mountBoardInLeaf(file, targetLeaf, boardContent);
+      }
     } finally {
       this.isAutoSwitching = false;
+    }
+  }
+
+  private async mountBoardInLeaf(file: TFile, leaf: WorkspaceLeaf, content: string) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+      const containerEl = leaf.view.containerEl;
+      const viewEl = containerEl.matches(".markdown-preview-view, .markdown-reading-view")
+        ? containerEl
+        : containerEl.querySelector<HTMLElement>(".markdown-preview-view, .markdown-reading-view");
+      if (!viewEl) {
+        continue;
+      }
+
+      const existingShells = Array.from(viewEl.querySelectorAll<HTMLElement>(".react-kanban-note-shell"));
+      if (viewEl.dataset.reactKanbanSourcePath === file.path && existingShells.length === 1) {
+        return;
+      }
+
+      existingShells.forEach((shell) => shell.remove());
+      viewEl.classList.remove("react-kanban-embedded");
+      delete viewEl.dataset.reactKanbanSourcePath;
+
+      const shell = document.createElement("div");
+      shell.className = "react-kanban-note-shell";
+      shell.dataset.sourcePath = file.path;
+      viewEl.classList.add("react-kanban-embedded");
+      viewEl.dataset.reactKanbanSourcePath = file.path;
+      viewEl.appendChild(shell);
+
+      const child = new KanbanRenderChild(shell, {
+        app: this.app,
+        file,
+        content
+      });
+      this.mountedBoardChildren.add(child);
+      this.addChild(child);
+      return;
     }
   }
 
