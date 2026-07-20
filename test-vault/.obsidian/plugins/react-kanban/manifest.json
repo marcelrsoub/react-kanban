@@ -1,7 +1,7 @@
 {
   "id": "react-kanban",
   "name": "React Kanban",
-  "version": "0.1.3",
+  "version": "0.1.7",
   "minAppVersion": "1.5.0",
   "description": "Render markdown-backed Kanban boards with a React UI.",
   "author": "Marcel Reis-Soubkovsky",

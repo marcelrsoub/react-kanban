@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/react";
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import { arrayMove, move } from "@dnd-kit/helpers";
-import { MarkdownRenderer, setIcon, type App, type Component, type TFile } from "obsidian";
+import { MarkdownRenderer, Notice, normalizePath, setIcon, type App, type Component, type TFile } from "obsidian";
 import { KanbanBoard as KanbanBoardModel, KanbanCard, KanbanColumn } from "./types";
 import { parseKanbanMarkdown, serializeKanbanMarkdown } from "./markdown";
 
@@ -17,6 +17,7 @@ type CardComposerState = {
   columnId: string;
   title: string;
   content: string;
+  cardId?: string;
 };
 
 type CardMenuState = {
@@ -46,6 +47,23 @@ function clearElementChildren(element: HTMLElement) {
     }
     element.removeChild(child);
   }
+}
+
+function getCardTitle(content: string) {
+  const firstLine = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  return firstLine?.replace(/^#{1,6}\s+/, "").trim() || "Untitled card";
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/[. ]+$/g, "")
+    .trim() || "Untitled";
 }
 
 type BoardViewProps = {
@@ -138,6 +156,16 @@ function deleteCard(board: KanbanBoardModel, cardId: string) {
     columns: board.columns.map((column) => ({
       ...column,
       cards: column.cards.filter((card) => card.id !== cardId)
+    }))
+  };
+}
+
+function updateCard(board: KanbanBoardModel, cardId: string, content: string) {
+  return {
+    ...board,
+    columns: board.columns.map((column) => ({
+      ...column,
+      cards: column.cards.map((card) => (card.id === cardId ? { ...card, content } : card))
     }))
   };
 }
@@ -335,13 +363,13 @@ function ColumnMenu({
 function CardMenu({
   x,
   y,
+  onEdit,
   onDelete,
-  onClose
 }: {
   x: number;
   y: number;
+  onEdit: () => void;
   onDelete: () => void;
-  onClose: () => void;
 }) {
   return (
     <div
@@ -350,6 +378,9 @@ function CardMenu({
       style={{ left: x, top: y }}
       onMouseDown={(event) => event.stopPropagation()}
     >
+      <button type="button" role="menuitem" onClick={onEdit}>
+        Edit card
+      </button>
       <button type="button" role="menuitem" className="danger" onClick={onDelete}>
         Delete card
       </button>
@@ -410,6 +441,25 @@ function MarkdownCardContent({
 
     let cancelled = false;
     clearElementChildren(el);
+    const handleInternalLinkClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const link = target.closest<HTMLAnchorElement>("a.internal-link");
+      const linkText = link?.dataset.href;
+      if (!link || !linkText || !el.contains(link)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      const newLeaf = event.metaKey || event.ctrlKey ? "tab" : false;
+      void app.workspace.openLinkText(linkText, sourcePath, newLeaf);
+    };
+
+    el.addEventListener("click", handleInternalLinkClick, true);
     void MarkdownRenderer.render(app, markdown || " ", el, sourcePath, component).then(() => {
       if (cancelled || !el.isConnected) {
         clearElementChildren(el);
@@ -418,6 +468,7 @@ function MarkdownCardContent({
 
     return () => {
       cancelled = true;
+      el.removeEventListener("click", handleInternalLinkClick, true);
     };
   }, [app, component, markdown, sourcePath]);
 
@@ -430,6 +481,7 @@ function ComposerDialog({
   submitLabel,
   initialValue,
   placeholder,
+  allowCreateNote,
   onCancel,
   onSubmit
 }: {
@@ -438,25 +490,37 @@ function ComposerDialog({
   submitLabel: string;
   initialValue: string;
   placeholder: string;
+  allowCreateNote: boolean;
   onCancel: () => void;
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string, createNote: boolean) => void | Promise<void>;
 }) {
   const [value, setValue] = useState(initialValue);
+  const [createNote, setCreateNote] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
 
-  function submitCurrentValue() {
+  async function submitCurrentValue() {
     const nextValue = value.trim();
-    if (nextValue) {
-      onSubmit(nextValue);
+    if (nextValue && !isSubmitting) {
+      setIsSubmitting(true);
+      try {
+        await onSubmit(nextValue, allowCreateNote && createNote);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   }
 
   return (
-    <div className="react-kanban-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
+    <div className="react-kanban-dialog-backdrop" role="presentation" onMouseDown={() => {
+      if (!isSubmitting) {
+        onCancel();
+      }
+    }}>
       <form
         className="react-kanban-dialog"
         role="dialog"
@@ -473,7 +537,7 @@ function ComposerDialog({
             <h3 id="react-kanban-dialog-title">{title}</h3>
             <p>{label}</p>
           </div>
-          <button type="button" className="clickable-icon react-kanban-icon-button" aria-label="Close dialog" onClick={onCancel}>
+          <button type="button" className="clickable-icon react-kanban-icon-button" aria-label="Close dialog" disabled={isSubmitting} onClick={onCancel}>
             ×
           </button>
         </div>
@@ -492,19 +556,33 @@ function ComposerDialog({
               event.stopPropagation();
               event.currentTarget.form?.requestSubmit();
             }
-            if (event.key === "Escape") {
+            if (event.key === "Escape" && !isSubmitting) {
               event.preventDefault();
               event.stopPropagation();
               onCancel();
             }
           }}
         />
+        {allowCreateNote ? (
+          <label className="react-kanban-note-option">
+            <input
+              type="checkbox"
+              checked={createNote}
+              disabled={isSubmitting}
+              onChange={(event) => setCreateNote(event.target.checked)}
+            />
+            <span>
+              <strong>Create as a new note</strong>
+              <small>Save it beside this board and add a linked card.</small>
+            </span>
+          </label>
+        ) : null}
         <div className="react-kanban-dialog-footer">
-          <button type="button" className="react-kanban-secondary-button" onClick={onCancel}>
+          <button type="button" className="react-kanban-secondary-button" disabled={isSubmitting} onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" className="react-kanban-primary-button">
-            {submitLabel}
+          <button type="submit" className="react-kanban-primary-button" disabled={isSubmitting}>
+            {isSubmitting ? (allowCreateNote && createNote ? "Creating..." : "Saving...") : allowCreateNote && createNote ? "Create note" : submitLabel}
           </button>
         </div>
       </form>
@@ -794,6 +872,28 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
     }));
   };
 
+  const addNoteCard = async (columnId: string, text: string) => {
+    const title = getCardTitle(text);
+    const baseName = sanitizeFileName(`${file.basename} - ${title}`);
+    const folder = file.parent?.path ?? "";
+    let notePath = normalizePath(folder ? `${folder}/${baseName}.md` : `${baseName}.md`);
+    let suffix = 2;
+
+    while (await app.vault.adapter.exists(notePath)) {
+      notePath = normalizePath(folder ? `${folder}/${baseName} ${suffix}.md` : `${baseName} ${suffix}.md`);
+      suffix += 1;
+    }
+
+    try {
+      const note = await app.vault.create(notePath, text);
+      const link = app.fileManager.generateMarkdownLink(note, file.path, undefined, title);
+      addCard(columnId, link);
+    } catch (error) {
+      new Notice(`Could not create note: ${error instanceof Error ? error.message : "Unknown error"}`);
+      throw error;
+    }
+  };
+
   const renameColumn = (columnId: string, title: string) => {
     updateBoard((current) => ({
       ...current,
@@ -835,6 +935,23 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
 
   const openCardContextMenu = (cardId: string, x: number, y: number) => {
     setOpenCardMenu({ cardId, x, y });
+  };
+
+  const editCard = (cardOrId: KanbanCard | string) => {
+    const cardId = typeof cardOrId === "string" ? cardOrId : cardOrId.id;
+    const column = findColumnByCardId(board, cardId);
+    const card = findCardById(board, cardId);
+    if (!column || !card) {
+      return;
+    }
+
+    setOpenCardMenu(null);
+    setComposer({
+      cardId,
+      columnId: column.id,
+      title: `Edit card in ${column.title}`,
+      content: card.content
+    });
   };
 
   const deleteCardFromBoard = (cardId: string) => {
@@ -886,7 +1003,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
               sourcePath={file.path}
               onAddCard={addCard}
               onRenameColumn={renameColumn}
-              onOpenCard={() => void 0}
+              onOpenCard={editCard}
               onToggleComplete={toggleComplete}
               onStartAddCard={startAddCard}
               menuOpen={openMenuColumnId === column.id}
@@ -921,8 +1038,8 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
           <CardMenu
             x={openCardMenu.x}
             y={openCardMenu.y}
+            onEdit={() => editCard(openCardMenu.cardId)}
             onDelete={() => deleteCardFromBoard(openCardMenu.cardId)}
-            onClose={() => setOpenCardMenu(null)}
           />
         </div>
       ) : null}
@@ -930,12 +1047,19 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
         <ComposerDialog
           title={composer.title}
           label="Use markdown, links, and line breaks. Cmd/Ctrl+Enter saves."
-          submitLabel="Add card"
+          submitLabel={composer.cardId ? "Save card" : "Add card"}
           initialValue={composer.content}
-          placeholder="Write the card content..."
+          placeholder={composer.cardId ? "Edit the card content..." : "Write the card content..."}
+          allowCreateNote={!composer.cardId}
           onCancel={() => setComposer(null)}
-          onSubmit={(value) => {
-            addCard(composer.columnId, value);
+          onSubmit={async (value, createNote) => {
+            if (composer.cardId) {
+              updateBoard((current) => updateCard(current, composer.cardId!, value));
+            } else if (createNote) {
+              await addNoteCard(composer.columnId, value);
+            } else {
+              addCard(composer.columnId, value);
+            }
             setComposer(null);
           }}
         />

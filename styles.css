@@ -491,6 +491,34 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   line-height: 1.5;
 }
 
+.react-kanban-note-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--rk-text);
+  cursor: pointer;
+}
+
+.react-kanban-note-option input {
+  margin-top: 2px;
+  accent-color: var(--rk-accent);
+}
+
+.react-kanban-note-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.react-kanban-note-option strong {
+  font-size: 13px;
+}
+
+.react-kanban-note-option small {
+  color: var(--rk-muted);
+  font-size: 12px;
+}
+
 .react-kanban-dialog-footer {
   display: flex;
   justify-content: flex-end;
