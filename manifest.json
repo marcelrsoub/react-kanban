@@ -3,7 +3,7 @@
   "name": "React Kanban",
   "version": "0.1.7",
   "minAppVersion": "1.5.0",
-  "description": "Render markdown-backed Kanban boards with a React UI.",
+  "description": "A modern Kanban board for Obsidian that works with your existing Markdown boards.",
   "author": "Marcel Reis-Soubkovsky",
   "authorUrl": "",
   "isDesktopOnly": false

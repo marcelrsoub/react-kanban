@@ -1,6 +1,23 @@
 # React Kanban for Obsidian
 
-React Kanban is an Obsidian plugin that opens markdown-based kanban notes in a modern React board UI. It uses the same `kanban-plugin: board` frontmatter marker as the existing Obsidian kanban format, so the same notes can be viewed here without changing their structure.
+<p align="center">
+  <img src="assets/icon.png" alt="React Kanban icon" width="160">
+</p>
+
+## Keep your Markdown boards. Upgrade the interface.
+
+React Kanban is a modern, local-first Kanban board for Obsidian. Open your existing Markdown-backed boards in a fast React interface without migrating or changing their structure.
+
+It uses the familiar `kanban-plugin: board` frontmatter marker, so your boards remain portable, editable, and readable as ordinary Markdown notes.
+
+![React Kanban board](assets/demo.gif)
+
+### Why React Kanban?
+
+- Use existing Obsidian Kanban notes without migration
+- Keep the underlying Markdown portable and transparent
+- Work locally with no analytics, telemetry, or plugin network requests
+- Turn linked notes and Markdown content into a visual board workflow
 
 ## Features
 
@@ -12,10 +29,6 @@ React Kanban is an Obsidian plugin that opens markdown-based kanban notes in a m
 - Render markdown inside cards
 - Mark cards complete and keep completed cards grouped at the bottom of each column
 - Delete cards from the right-click menu
-
-## Demo
-
-![React Kanban demo](assets/demo.gif)
 
 ## Markdown Format
 
@@ -39,7 +52,13 @@ kanban-plugin: board
 
 ## Installation
 
-This plugin is intended to be installed from the Obsidian community plugin browser once published.
+Install **React Kanban** from Obsidian’s Community plugins browser, then enable it in **Settings → Community plugins**.
+
+Open a note with the `kanban-plugin: board` frontmatter marker and React Kanban will display it as a board. Your note stays a normal Markdown file, so you can continue editing it in source mode or with other compatible tools.
+
+### Existing Kanban boards
+
+React Kanban is designed to work with the standard heading-based Kanban format. No export or conversion step is required. Make a backup of important notes before trying any new plugin, as you would with any tool that writes to your vault.
 
 For local development, copy the built files into your vault plugin folder:
 
