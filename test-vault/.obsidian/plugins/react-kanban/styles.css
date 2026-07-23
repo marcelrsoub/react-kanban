@@ -3,8 +3,11 @@
   width: 100%;
   max-width: none;
   max-height: calc(100vh - 96px);
-  overflow-x: auto;
+  overflow-x: scroll;
   overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   box-sizing: border-box;
   --rk-bg: var(--background-primary);
   --rk-panel: color-mix(in srgb, var(--background-secondary) 82%, transparent);
@@ -85,6 +88,7 @@
   padding: 16px;
   min-width: 100%;
   width: max-content;
+  touch-action: pan-x pan-y;
   box-sizing: border-box;
 }
 
