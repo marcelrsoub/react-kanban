@@ -1,9 +1,20 @@
-import { App, MarkdownRenderChild, Menu, Notice, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf } from "obsidian";
+import { App, MarkdownRenderChild, Menu, Notice, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf, type SettingDefinitionItem } from "obsidian";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { BoardView } from "./BoardView";
 import { createStarterBoard, parseKanbanMarkdown } from "./markdown";
-import { DEFAULT_SETTINGS, type NewNoteFolderMode, type NewNoteNameMode, type ReactKanbanSettings } from "./settings";
+import {
+  DEFAULT_SETTINGS,
+  isNewNoteFolderMode,
+  isNewNoteNameMode,
+  type NewNoteFolderMode,
+  type NewNoteNameMode,
+  type ReactKanbanSettings
+} from "./settings";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 type BoardRenderProps = {
   app: App;
@@ -64,7 +75,19 @@ export default class ReactKanbanPlugin extends Plugin {
   private renderGeneration = 0;
 
   async onload() {
-    this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+    const loadedData: unknown = await this.loadData();
+    const savedSettings = isRecord(loadedData) ? loadedData : {};
+    this.settings = {
+      newNoteFolderMode: isNewNoteFolderMode(savedSettings.newNoteFolderMode)
+        ? savedSettings.newNoteFolderMode
+        : DEFAULT_SETTINGS.newNoteFolderMode,
+      newNoteCustomFolder: typeof savedSettings.newNoteCustomFolder === "string"
+        ? savedSettings.newNoteCustomFolder
+        : DEFAULT_SETTINGS.newNoteCustomFolder,
+      newNoteNameMode: isNewNoteNameMode(savedSettings.newNoteNameMode)
+        ? savedSettings.newNoteNameMode
+        : DEFAULT_SETTINGS.newNoteNameMode
+    };
     this.addSettingTab(new ReactKanbanSettingTab(this.app, this));
     this.clearKanbanViewState();
     this.activeFilePath = this.app.workspace.getActiveFile()?.path ?? null;
@@ -109,10 +132,8 @@ export default class ReactKanbanPlugin extends Plugin {
 
         viewEl.classList.add("react-kanban-embedded");
 
-        const shell = document.createElement("div");
-        shell.className = "react-kanban-note-shell";
+        const shell = viewEl.createDiv({ cls: "react-kanban-note-shell" });
         shell.dataset.sourcePath = ctx.sourcePath;
-        viewEl.appendChild(shell);
         ctx.addChild(
           new KanbanRenderChild(shell, {
             app: this.app,
@@ -255,7 +276,7 @@ export default class ReactKanbanPlugin extends Plugin {
           file: file.path,
           mode: "preview"
         }
-      } as any);
+      });
       const boardContent = content ?? (await this.app.vault.read(file));
       if (parseKanbanMarkdown(boardContent)) {
         await this.mountBoardInLeaf(file, targetLeaf, boardContent);
@@ -267,7 +288,7 @@ export default class ReactKanbanPlugin extends Plugin {
 
   private async mountBoardInLeaf(file: TFile, leaf: WorkspaceLeaf, content: string) {
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
       const containerEl = leaf.view.containerEl;
       const viewEl = containerEl.matches(".markdown-preview-view, .markdown-reading-view")
@@ -286,12 +307,10 @@ export default class ReactKanbanPlugin extends Plugin {
       viewEl.classList.remove("react-kanban-embedded");
       delete viewEl.dataset.reactKanbanSourcePath;
 
-      const shell = document.createElement("div");
-      shell.className = "react-kanban-note-shell";
+      const shell = viewEl.createDiv({ cls: "react-kanban-note-shell" });
       shell.dataset.sourcePath = file.path;
       viewEl.classList.add("react-kanban-embedded");
       viewEl.dataset.reactKanbanSourcePath = file.path;
-      viewEl.appendChild(shell);
 
       const child = new KanbanRenderChild(shell, {
         app: this.app,
@@ -322,10 +341,79 @@ class ReactKanbanSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
+  getSettingDefinitions(): SettingDefinitionItem<keyof ReactKanbanSettings>[] {
+    return [
+      {
+        type: "group",
+        heading: "New card notes",
+        items: [
+          {
+            name: "New card note location",
+            desc: "Choose where notes created from the Add card dialog should be stored.",
+            control: {
+              type: "dropdown",
+              key: "newNoteFolderMode",
+              defaultValue: DEFAULT_SETTINGS.newNoteFolderMode,
+              options: {
+                "board-folder": "Same folder as the board",
+                "board-subfolder": "Subfolder named after the board",
+                "custom-folder": "Custom vault folder"
+              }
+            }
+          },
+          {
+            name: "Custom note folder",
+            desc: "Vault-relative path, for example Projects/Kanban cards.",
+            visible: () => this.plugin.settings.newNoteFolderMode === "custom-folder",
+            control: {
+              type: "folder",
+              key: "newNoteCustomFolder",
+              defaultValue: DEFAULT_SETTINGS.newNoteCustomFolder,
+              placeholder: "Projects/Kanban cards",
+              includeRoot: true
+            }
+          },
+          {
+            name: "New card note filename",
+            desc: "Choose how the Markdown note filename is generated.",
+            control: {
+              type: "dropdown",
+              key: "newNoteNameMode",
+              defaultValue: DEFAULT_SETTINGS.newNoteNameMode,
+              options: {
+                "board-and-card": "Board name - card title",
+                "card-only": "Card title only"
+              }
+            }
+          },
+          {
+            name: "About new card notes",
+            desc: "These options apply to new notes created from the Add card dialog. Existing linked cards are unchanged."
+          }
+        ]
+      }
+    ];
+  }
+
+  async setControlValue(key: string, value: unknown) {
+    if (key === "newNoteFolderMode" && isNewNoteFolderMode(value)) {
+      this.plugin.settings.newNoteFolderMode = value;
+    } else if (key === "newNoteCustomFolder" && typeof value === "string") {
+      this.plugin.settings.newNoteCustomFolder = value.trim();
+    } else if (key === "newNoteNameMode" && isNewNoteNameMode(value)) {
+      this.plugin.settings.newNoteNameMode = value;
+    } else {
+      return;
+    }
+
+    await this.plugin.saveData(this.plugin.settings);
+    this.update();
+  }
+
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "React Kanban" });
+    new Setting(containerEl).setName("React Kanban").setHeading();
 
     new Setting(containerEl)
       .setName("New card note location")

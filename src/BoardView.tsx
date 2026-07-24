@@ -652,7 +652,7 @@ function ComposerDialog({
         onMouseDown={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault();
-          submitCurrentValue();
+          void submitCurrentValue();
         }}
       >
         <div className="react-kanban-dialog-header">
