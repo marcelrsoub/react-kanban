@@ -99,6 +99,7 @@
   flex: 0 0 280px;
   min-height: 0;
   min-width: 280px;
+  touch-action: pan-x pan-y;
   border: 1px solid var(--rk-border);
   border-radius: 18px;
   background: var(--rk-panel);
@@ -119,6 +120,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  touch-action: pan-x pan-y;
   padding: 14px 14px 12px;
   border-bottom: 1px solid var(--rk-border);
 }
@@ -180,6 +182,26 @@ button.clickable-icon.react-kanban-icon-button {
   margin: 0;
   border-radius: 8px;
   transition: background-color 120ms ease, color 120ms ease;
+}
+
+@media screen and (max-width: 700px) {
+  .react-kanban-note-shell {
+    top: max(48px, env(safe-area-inset-top));
+  }
+
+  .react-kanban-view {
+    max-height: none;
+  }
+
+  .react-kanban-column-actions {
+    gap: 8px;
+  }
+
+  button.clickable-icon.react-kanban-icon-button {
+    width: 40px;
+    height: 40px;
+    touch-action: manipulation;
+  }
 }
 
 button.clickable-icon.react-kanban-icon-button:hover {
