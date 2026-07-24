@@ -407,13 +407,12 @@ class ReactKanbanSettingTab extends PluginSettingTab {
     }
 
     await this.plugin.saveData(this.plugin.settings);
-    this.update();
   }
 
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new Setting(containerEl).setName("React Kanban").setHeading();
+    new Setting(containerEl).setName("New card notes").setHeading();
 
     new Setting(containerEl)
       .setName("New card note location")

@@ -1,6 +1,6 @@
 {
   "name": "obsidian-react-kanban",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "private": true,
   "description": "A plugin that renders markdown-backed Kanban boards with React.",
   "license": "MIT",
