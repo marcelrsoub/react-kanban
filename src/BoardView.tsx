@@ -11,21 +11,16 @@ import {
 } from "@dnd-kit/react";
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import { arrayMove, move } from "@dnd-kit/helpers";
-import { MarkdownRenderer, Notice, normalizePath, setIcon, type App, type Component, type TFile } from "obsidian";
+import { MarkdownRenderer, Menu, Notice, normalizePath, Platform, setIcon, type App, type Component, type TFile } from "obsidian";
 import { KanbanBoard as KanbanBoardModel, KanbanCard, KanbanColumn } from "./types";
 import { parseKanbanMarkdown, serializeKanbanMarkdown } from "./markdown";
+import type { ReactKanbanSettings } from "./settings";
 
 type CardComposerState = {
   columnId: string;
   title: string;
   content: string;
   cardId?: string;
-};
-
-type CardMenuState = {
-  cardId: string;
-  x: number;
-  y: number;
 };
 
 type ConfirmDialogState = {
@@ -51,6 +46,117 @@ const touchScrollPointerSensor = PointerSensor.configure({
 });
 
 const dragSensors = [touchScrollPointerSensor, KeyboardSensor];
+
+function useHorizontalTouchScroll(viewRef: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) {
+      return;
+    }
+
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let axis: "horizontal" | "vertical" | null = null;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        axis = null;
+        return;
+      }
+
+      const touch = event.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startScrollLeft = view.scrollLeft;
+      axis = null;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        return;
+      }
+
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = touch.clientY - startY;
+
+      if (axis === null) {
+        if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 8) {
+          return;
+        }
+
+        axis = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
+      }
+
+      if (axis !== "horizontal") {
+        return;
+      }
+
+      event.preventDefault();
+      view.scrollLeft = startScrollLeft - deltaX;
+    };
+
+    const reset = () => {
+      axis = null;
+    };
+
+    const onPointerStart = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !event.isPrimary) {
+        return;
+      }
+
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollLeft = view.scrollLeft;
+      axis = null;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !event.isPrimary || axis === "vertical") {
+        return;
+      }
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+
+      if (axis === null) {
+        if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 8) {
+          return;
+        }
+
+        axis = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
+      }
+
+      if (axis !== "horizontal") {
+        return;
+      }
+
+      event.preventDefault();
+      view.scrollLeft = startScrollLeft - deltaX;
+    };
+
+    view.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+    view.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    view.addEventListener("touchend", reset, { capture: true });
+    view.addEventListener("touchcancel", reset, { capture: true });
+    view.addEventListener("pointerdown", onPointerStart, { capture: true, passive: true });
+    view.addEventListener("pointermove", onPointerMove, { capture: true, passive: false });
+    view.addEventListener("pointerup", reset, { capture: true });
+    view.addEventListener("pointercancel", reset, { capture: true });
+
+    return () => {
+      view.removeEventListener("touchstart", onTouchStart, true);
+      view.removeEventListener("touchmove", onTouchMove, true);
+      view.removeEventListener("touchend", reset, true);
+      view.removeEventListener("touchcancel", reset, true);
+      view.removeEventListener("pointerdown", onPointerStart, true);
+      view.removeEventListener("pointermove", onPointerMove, true);
+      view.removeEventListener("pointerup", reset, true);
+      view.removeEventListener("pointercancel", reset, true);
+    };
+  }, [viewRef]);
+}
 
 function cardGroupId(columnId: string) {
   return `${CARD_GROUP_PREFIX}${columnId}`;
@@ -83,11 +189,43 @@ function sanitizeFileName(value: string) {
     .trim() || "Untitled";
 }
 
+function getNewNoteFolder(file: TFile, settings: ReactKanbanSettings) {
+  const boardFolder = file.parent?.path ?? "";
+  if (settings.newNoteFolderMode === "board-subfolder") {
+    const boardFolderName = sanitizeFileName(file.basename);
+    return normalizePath(boardFolder ? `${boardFolder}/${boardFolderName}` : boardFolderName);
+  }
+
+  if (settings.newNoteFolderMode === "custom-folder") {
+    const customFolder = settings.newNoteCustomFolder.trim().replace(/^\/+|\/+$/g, "");
+    if (customFolder) {
+      return normalizePath(customFolder);
+    }
+  }
+
+  return boardFolder;
+}
+
+async function ensureFolderExists(app: App, folder: string) {
+  if (!folder) {
+    return;
+  }
+
+  let current = "";
+  for (const part of folder.split("/").filter(Boolean)) {
+    current = normalizePath(current ? `${current}/${part}` : part);
+    if (!app.vault.getAbstractFileByPath(current)) {
+      await app.vault.createFolder(current);
+    }
+  }
+}
+
 type BoardViewProps = {
   app: App;
   component: Component;
   file: TFile;
   content: string;
+  getNoteCreationSettings: () => ReactKanbanSettings;
   onSave: (nextContent: string) => Promise<void>;
 };
 
@@ -263,11 +401,7 @@ function SortableCard({
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        const cardEl = event.currentTarget as HTMLElement;
-        const boardEl = cardEl.closest(".react-kanban-view");
-        const cardRect = cardEl.getBoundingClientRect();
-        const boardRect = boardEl?.getBoundingClientRect() ?? { left: 0, top: 0 };
-        onOpenMenu(card.id, cardRect.left - boardRect.left + 12, cardRect.bottom - boardRect.top + 8);
+        onOpenMenu(card.id, event.clientX + 8, event.clientY + 8);
       }}
     >
       <button
@@ -374,34 +508,6 @@ function ColumnMenu({
         </button>
       </div>
     </>
-  );
-}
-
-function CardMenu({
-  x,
-  y,
-  onEdit,
-  onDelete,
-}: {
-  x: number;
-  y: number;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div
-      className="react-kanban-card-menu"
-      role="menu"
-      style={{ left: x, top: y }}
-      onMouseDown={(event) => event.stopPropagation()}
-    >
-      <button type="button" role="menuitem" onClick={onEdit}>
-        Edit card
-      </button>
-      <button type="button" role="menuitem" className="danger" onClick={onDelete}>
-        Delete card
-      </button>
-    </div>
   );
 }
 
@@ -775,16 +881,18 @@ function ColumnView({
   );
 }
 
-export function BoardView({ app, file, content, component, onSave }: BoardViewProps) {
+export function BoardView({ app, file, content, component, getNoteCreationSettings, onSave }: BoardViewProps) {
+  const viewRef = useRef<HTMLDivElement | null>(null);
   const parsed = useMemo(() => parseKanbanMarkdown(content), [content]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [composer, setComposer] = useState<CardComposerState | null>(null);
   const [openMenuColumnId, setOpenMenuColumnId] = useState<string | null>(null);
-  const [openCardMenu, setOpenCardMenu] = useState<CardMenuState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [board, setBoard] = useState<KanbanBoardModel | null>(parsed);
   const boardSnapshot = useRef<KanbanBoardModel | null>(parsed);
   const isDragging = useRef(false);
+
+  useHorizontalTouchScroll(viewRef);
 
   useEffect(() => {
     if (!isDragging.current) {
@@ -810,7 +918,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
 
   if (!board) {
     return (
-      <div className="react-kanban-view">
+      <div ref={viewRef} className="react-kanban-view">
         <div className="react-kanban-toolbar">
           <h2>{file.basename}</h2>
           <span className="status">This file is not a Kanban board yet</span>
@@ -891,8 +999,11 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
 
   const addNoteCard = async (columnId: string, text: string) => {
     const title = getCardTitle(text);
-    const baseName = sanitizeFileName(`${file.basename} - ${title}`);
-    const folder = file.parent?.path ?? "";
+    const settings = getNoteCreationSettings();
+    const baseName = sanitizeFileName(
+      settings.newNoteNameMode === "card-only" ? title : `${file.basename} - ${title}`
+    );
+    const folder = getNewNoteFolder(file, settings);
     let notePath = normalizePath(folder ? `${folder}/${baseName}.md` : `${baseName}.md`);
     let suffix = 2;
 
@@ -902,6 +1013,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
     }
 
     try {
+      await ensureFolderExists(app, folder);
       const note = await app.vault.create(notePath, text);
       const link = app.fileManager.generateMarkdownLink(note, file.path, undefined, title);
       addCard(columnId, link);
@@ -951,7 +1063,15 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
   };
 
   const openCardContextMenu = (cardId: string, x: number, y: number) => {
-    setOpenCardMenu({ cardId, x, y });
+    const menu = new Menu();
+    if (Platform.isDesktopApp) {
+      menu.setUseNativeMenu(true);
+    }
+
+    menu
+      .addItem((item) => item.setTitle("Edit card").setIcon("pencil").onClick(() => editCard(cardId)))
+      .addItem((item) => item.setTitle("Delete card").setIcon("trash").onClick(() => deleteCardFromBoard(cardId)))
+      .showAtPosition({ x, y });
   };
 
   const editCard = (cardOrId: KanbanCard | string) => {
@@ -962,7 +1082,6 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
       return;
     }
 
-    setOpenCardMenu(null);
     setComposer({
       cardId,
       columnId: column.id,
@@ -977,7 +1096,6 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
       return;
     }
 
-    setOpenCardMenu(null);
     setConfirmDialog({
       title: "Delete card?",
       message: "This will permanently remove the card from the board.",
@@ -1003,7 +1121,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
   };
 
   return (
-    <div className="react-kanban-view">
+    <div ref={viewRef} className="react-kanban-view">
       <div className="react-kanban-toolbar">
         <h2>{file.basename}</h2>
         <span className="status">{board.columns.reduce((sum, column) => sum + column.cards.length, 0)} cards</span>
@@ -1050,16 +1168,6 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
           }}
         </DragOverlay>
       </DragDropProvider>
-      {openCardMenu ? (
-        <div className="react-kanban-card-menu-backdrop" onMouseDown={() => setOpenCardMenu(null)}>
-          <CardMenu
-            x={openCardMenu.x}
-            y={openCardMenu.y}
-            onEdit={() => editCard(openCardMenu.cardId)}
-            onDelete={() => deleteCardFromBoard(openCardMenu.cardId)}
-          />
-        </div>
-      ) : null}
       {composer ? (
         <ComposerDialog
           title={composer.title}

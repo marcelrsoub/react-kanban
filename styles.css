@@ -7,7 +7,7 @@
   overflow-y: hidden;
   overscroll-behavior-x: auto;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
+  touch-action: pan-y;
   box-sizing: border-box;
   --rk-bg: var(--background-primary);
   --rk-panel: color-mix(in srgb, var(--background-secondary) 82%, transparent);
@@ -27,6 +27,15 @@
   --rk-panel: color-mix(in srgb, var(--background-secondary) 86%, black 14%);
   --rk-panel-strong: color-mix(in srgb, var(--background-secondary) 86%, black 14%);
   --rk-border: color-mix(in srgb, var(--background-modifier-border) 72%, black 28%);
+}
+
+.theme-light .react-kanban-card {
+  background: var(--background-primary);
+}
+
+.theme-light .react-kanban-card-checkbox {
+  border-color: color-mix(in srgb, var(--text-normal) 38%, var(--background-primary));
+  background: color-mix(in srgb, var(--background-secondary) 58%, var(--background-primary));
 }
 
 .markdown-preview-view:has(.react-kanban-view) .markdown-preview-sizer,
@@ -189,6 +198,7 @@ button.clickable-icon.react-kanban-icon-button {
 @media screen and (max-width: 700px) {
   .react-kanban-note-shell {
     top: max(48px, env(safe-area-inset-top));
+    bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
   .react-kanban-view {
@@ -203,6 +213,14 @@ button.clickable-icon.react-kanban-icon-button {
     width: 40px;
     height: 40px;
     touch-action: manipulation;
+  }
+
+  .react-kanban-card {
+    transform: translateZ(0);
+  }
+
+  .react-kanban-card-markdown {
+    transform: translateZ(0);
   }
 }
 
@@ -265,12 +283,15 @@ button.clickable-icon.react-kanban-icon-button:disabled,
 
 .react-kanban-card {
   position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 12px 12px 10px;
   border-radius: 14px;
   border: 1px solid var(--rk-border);
   background: var(--rk-panel-strong);
   color: var(--rk-text);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
   cursor: grab;
   transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
@@ -418,49 +439,6 @@ button.clickable-icon.react-kanban-icon-button:disabled,
 }
 
 .react-kanban-column-menu .danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text-error) 12%, transparent);
-}
-
-.react-kanban-card-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-}
-
-.react-kanban-card-menu {
-  position: absolute;
-  z-index: 31;
-  min-width: 180px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px;
-  border-radius: 16px;
-  border: 1px solid var(--rk-border);
-  background: color-mix(in srgb, var(--background-primary) 98%, black 2%);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
-}
-
-.react-kanban-card-menu button {
-  border: 0;
-  background: transparent;
-  color: var(--rk-text);
-  text-align: left;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font: inherit;
-  cursor: pointer;
-}
-
-.react-kanban-card-menu button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--rk-accent-soft) 60%, transparent);
-}
-
-.react-kanban-card-menu .danger {
-  color: color-mix(in srgb, var(--text-error) 90%, var(--rk-text));
-}
-
-.react-kanban-card-menu .danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text-error) 12%, transparent);
 }
 

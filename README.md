@@ -30,6 +30,15 @@ It uses the familiar `kanban-plugin: board` frontmatter marker, so your boards r
 - Mark cards complete and keep completed cards grouped at the bottom of each column
 - Delete cards from the right-click menu
 
+### New card note settings
+
+When adding a card, you can optionally create a linked Markdown note. Configure its destination and filename in **Settings → Community plugins → React Kanban**:
+
+- Keep notes in the board’s folder (the default)
+- Create a subfolder named after the board
+- Choose a custom vault-relative folder
+- Name notes with the board and card title, or with the card title only
+
 ## Markdown Format
 
 The plugin understands standard heading-based kanban notes:

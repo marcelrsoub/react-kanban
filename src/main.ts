@@ -1,13 +1,15 @@
-import { App, MarkdownRenderChild, Menu, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { App, MarkdownRenderChild, Menu, Notice, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf } from "obsidian";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { BoardView } from "./BoardView";
 import { createStarterBoard, parseKanbanMarkdown } from "./markdown";
+import { DEFAULT_SETTINGS, type NewNoteFolderMode, type NewNoteNameMode, type ReactKanbanSettings } from "./settings";
 
 type BoardRenderProps = {
   app: App;
   file: TFile;
   content: string;
+  getNoteCreationSettings: () => ReactKanbanSettings;
 };
 
 class KanbanRenderChild extends MarkdownRenderChild {
@@ -29,6 +31,7 @@ class KanbanRenderChild extends MarkdownRenderChild {
         component: this,
         file: this.props.file,
         content: this.props.content,
+        getNoteCreationSettings: this.props.getNoteCreationSettings,
         onSave: async (nextContent: string) => {
           await this.props.app.vault.modify(this.props.file, nextContent);
         }
@@ -53,6 +56,7 @@ class KanbanRenderChild extends MarkdownRenderChild {
 }
 
 export default class ReactKanbanPlugin extends Plugin {
+  settings: ReactKanbanSettings = { ...DEFAULT_SETTINGS };
   private isAutoSwitching = false;
   private activeFilePath: string | null = null;
   private mountedBoardChildren = new Set<KanbanRenderChild>();
@@ -60,6 +64,8 @@ export default class ReactKanbanPlugin extends Plugin {
   private renderGeneration = 0;
 
   async onload() {
+    this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+    this.addSettingTab(new ReactKanbanSettingTab(this.app, this));
     this.clearKanbanViewState();
     this.activeFilePath = this.app.workspace.getActiveFile()?.path ?? null;
 
@@ -111,7 +117,8 @@ export default class ReactKanbanPlugin extends Plugin {
           new KanbanRenderChild(shell, {
             app: this.app,
             file: abstract,
-            content
+            content,
+            getNoteCreationSettings: () => this.settings
           })
         );
       } finally {
@@ -289,7 +296,8 @@ export default class ReactKanbanPlugin extends Plugin {
       const child = new KanbanRenderChild(shell, {
         app: this.app,
         file,
-        content
+        content,
+        getNoteCreationSettings: () => this.settings
       });
       this.mountedBoardChildren.add(child);
       this.addChild(child);
@@ -306,5 +314,66 @@ export default class ReactKanbanPlugin extends Plugin {
       suffix += 1;
     }
     return candidate;
+  }
+}
+
+class ReactKanbanSettingTab extends PluginSettingTab {
+  constructor(app: App, private readonly plugin: ReactKanbanPlugin) {
+    super(app, plugin);
+  }
+
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.createEl("h2", { text: "React Kanban" });
+
+    new Setting(containerEl)
+      .setName("New card note location")
+      .setDesc("Choose where notes created from the Add card dialog should be stored.")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("board-folder", "Same folder as the board")
+          .addOption("board-subfolder", "Subfolder named after the board")
+          .addOption("custom-folder", "Custom vault folder")
+          .setValue(this.plugin.settings.newNoteFolderMode)
+          .onChange(async (value) => {
+            this.plugin.settings.newNoteFolderMode = value as NewNoteFolderMode;
+            await this.plugin.saveData(this.plugin.settings);
+            this.display();
+          })
+      );
+
+    if (this.plugin.settings.newNoteFolderMode === "custom-folder") {
+      new Setting(containerEl)
+        .setName("Custom note folder")
+        .setDesc("Vault-relative path, for example Projects/Kanban cards.")
+        .addText((text) =>
+          text
+            .setPlaceholder("Projects/Kanban cards")
+            .setValue(this.plugin.settings.newNoteCustomFolder)
+            .onChange(async (value) => {
+              this.plugin.settings.newNoteCustomFolder = value.trim();
+              await this.plugin.saveData(this.plugin.settings);
+            })
+        );
+    }
+
+    new Setting(containerEl)
+      .setName("New card note filename")
+      .setDesc("Choose how the Markdown note filename is generated.")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("board-and-card", "Board name - card title")
+          .addOption("card-only", "Card title only")
+          .setValue(this.plugin.settings.newNoteNameMode)
+          .onChange(async (value) => {
+            this.plugin.settings.newNoteNameMode = value as NewNoteNameMode;
+            await this.plugin.saveData(this.plugin.settings);
+          })
+      );
+
+    containerEl.createEl("p", {
+      text: "These options apply to new notes created from the Add card dialog. Existing linked cards are unchanged."
+    });
   }
 }
