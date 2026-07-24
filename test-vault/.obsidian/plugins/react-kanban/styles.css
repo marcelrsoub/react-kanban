@@ -5,7 +5,7 @@
   max-height: calc(100vh - 96px);
   overflow-x: scroll;
   overflow-y: hidden;
-  overscroll-behavior-x: contain;
+  overscroll-behavior-x: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
   box-sizing: border-box;
@@ -99,6 +99,7 @@
   flex: 0 0 280px;
   min-height: 0;
   min-width: 280px;
+  overscroll-behavior-x: auto;
   touch-action: pan-x pan-y;
   border: 1px solid var(--rk-border);
   border-radius: 18px;
@@ -120,6 +121,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  overscroll-behavior-x: auto;
   touch-action: pan-x pan-y;
   padding: 14px 14px 12px;
   border-bottom: 1px solid var(--rk-border);
