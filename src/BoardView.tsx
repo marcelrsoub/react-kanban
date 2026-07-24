@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DragDropProvider,
   DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
   useDroppable,
   type DragEndEvent,
   type DragOverEvent,
@@ -34,6 +36,21 @@ type ConfirmDialogState = {
 };
 
 const CARD_GROUP_PREFIX = "cards:";
+
+const touchScrollPointerSensor = PointerSensor.configure({
+  preventActivation(event, source) {
+    if (event.pointerType === "touch") {
+      const target = event.target;
+      if (!(target instanceof Element) || !source.handle?.contains(target)) {
+        return true;
+      }
+    }
+
+    return PointerSensor.defaults.preventActivation?.(event, source) ?? false;
+  }
+});
+
+const dragSensors = [touchScrollPointerSensor, KeyboardSensor];
 
 function cardGroupId(columnId: string) {
   return `${CARD_GROUP_PREFIX}${columnId}`;
@@ -991,7 +1008,7 @@ export function BoardView({ app, file, content, component, onSave }: BoardViewPr
         <h2>{file.basename}</h2>
         <span className="status">{board.columns.reduce((sum, column) => sum + column.cards.length, 0)} cards</span>
       </div>
-      <DragDropProvider onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
+      <DragDropProvider sensors={dragSensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
         <div className="react-kanban-board">
           {board.columns.map((column, index) => (
             <ColumnView
