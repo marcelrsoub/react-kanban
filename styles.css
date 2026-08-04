@@ -1,3 +1,7 @@
+/* Shared React Kanban board stylesheet.
+ * Hosts may override the --rk-* tokens on .react-kanban-view. Obsidian variables
+ * below are optional fallbacks, so this file also works in a non-Obsidian host.
+ */
 .react-kanban-view {
   position: relative;
   width: 100%;
@@ -9,14 +13,18 @@
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   box-sizing: border-box;
-  --rk-bg: var(--background-primary);
-  --rk-panel: color-mix(in srgb, var(--background-secondary) 82%, transparent);
-  --rk-panel-strong: color-mix(in srgb, var(--background-secondary) 88%, white 12%);
-  --rk-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
-  --rk-text: var(--text-normal);
-  --rk-muted: var(--text-muted);
-  --rk-accent: var(--interactive-accent);
-  --rk-accent-soft: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  --rk-bg: #ffffff;
+  --rk-panel: #f4f4f5;
+  --rk-panel-strong: #ffffff;
+  --rk-border: #d4d4d8;
+  --rk-text: #27272a;
+  --rk-muted: #71717a;
+  --rk-accent: #7c3aed;
+  --rk-accent-soft: color-mix(in srgb, var(--rk-accent) 16%, transparent);
+  --rk-hover: #e4e4e7;
+  --rk-danger: #dc2626;
+  --rk-scrim: rgba(15, 23, 42, 0.42);
+  --rk-on-accent: #ffffff;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -24,18 +32,40 @@
 }
 
 .theme-dark .react-kanban-view {
-  --rk-panel: color-mix(in srgb, var(--background-secondary) 86%, black 14%);
-  --rk-panel-strong: color-mix(in srgb, var(--background-secondary) 86%, black 14%);
-  --rk-border: color-mix(in srgb, var(--background-modifier-border) 72%, black 28%);
+  --rk-bg: var(--background-primary, #18181b);
+  --rk-panel: color-mix(in srgb, var(--background-secondary, #27272a) 86%, black 14%);
+  --rk-panel-strong: color-mix(in srgb, var(--background-secondary, #27272a) 86%, black 14%);
+  --rk-border: color-mix(in srgb, var(--background-modifier-border, #3f3f46) 72%, black 28%);
+  --rk-text: var(--text-normal, #f4f4f5);
+  --rk-muted: var(--text-muted, #a1a1aa);
+  --rk-accent: var(--interactive-accent, #a78bfa);
+  --rk-hover: var(--background-modifier-hover, #3f3f46);
+  --rk-danger: var(--text-error, #f87171);
+  --rk-scrim: rgba(0, 0, 0, 0.62);
+  --rk-on-accent: var(--text-on-accent, #ffffff);
+}
+
+.theme-light .react-kanban-view {
+  --rk-bg: var(--background-primary, #ffffff);
+  --rk-panel: var(--background-secondary, #f4f4f5);
+  --rk-panel-strong: var(--background-primary, #ffffff);
+  --rk-border: var(--background-modifier-border, #d4d4d8);
+  --rk-text: var(--text-normal, #27272a);
+  --rk-muted: var(--text-muted, #71717a);
+  --rk-accent: var(--interactive-accent, #7c3aed);
+  --rk-hover: var(--background-modifier-hover, #e4e4e7);
+  --rk-danger: var(--text-error, #dc2626);
+  --rk-scrim: rgba(15, 23, 42, 0.42);
+  --rk-on-accent: var(--text-on-accent, #ffffff);
 }
 
 .theme-light .react-kanban-card {
-  background: var(--background-primary);
+  background: var(--rk-panel-strong);
 }
 
 .theme-light .react-kanban-card-checkbox {
-  border-color: color-mix(in srgb, var(--text-normal) 38%, var(--background-primary));
-  background: color-mix(in srgb, var(--background-secondary) 58%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--rk-text) 38%, var(--rk-bg));
+  background: color-mix(in srgb, var(--rk-panel) 58%, var(--rk-bg));
 }
 
 .markdown-preview-view:has(.react-kanban-view) .markdown-preview-sizer,
@@ -75,7 +105,7 @@
   gap: 8px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--rk-border);
-  background: color-mix(in srgb, var(--background-primary) 94%, transparent);
+  background: color-mix(in srgb, var(--rk-panel-strong) 94%, transparent);
 }
 
 .react-kanban-toolbar h2 {
@@ -225,8 +255,8 @@ button.clickable-icon.react-kanban-icon-button {
 }
 
 button.clickable-icon.react-kanban-icon-button:hover {
-  background-color: var(--background-modifier-hover) !important;
-  color: var(--text-normal);
+  background-color: var(--rk-hover) !important;
+  color: var(--rk-text);
 }
 
 button.clickable-icon.react-kanban-icon-button:focus-visible {
@@ -257,7 +287,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   flex: 1;
   border-radius: 10px;
   border: 1px solid var(--rk-border);
-  background: var(--background-primary);
+  background: var(--rk-panel-strong);
   color: var(--rk-text);
   padding: 6px 10px;
   font-size: 14px;
@@ -273,7 +303,8 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   gap: 10px;
   border-radius: 0 0 18px 18px;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: auto;
   transition: background 120ms ease;
 }
 
@@ -314,7 +345,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
 
 .react-kanban-card.is-completed {
   opacity: 0.82;
-  background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+  background: color-mix(in srgb, var(--rk-panel) 88%, transparent);
 }
 
 .react-kanban-card.is-completed .react-kanban-card-markdown {
@@ -415,7 +446,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   padding: 6px;
   border-radius: 16px;
   border: 1px solid var(--rk-border);
-  background: color-mix(in srgb, var(--background-primary) 98%, black 2%);
+  background: color-mix(in srgb, var(--rk-panel-strong) 98%, black 2%);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
 }
 
@@ -435,11 +466,50 @@ button.clickable-icon.react-kanban-icon-button:disabled,
 }
 
 .react-kanban-column-menu .danger {
-  color: color-mix(in srgb, var(--text-error) 90%, var(--rk-text));
+  color: color-mix(in srgb, var(--rk-danger) 90%, var(--rk-text));
 }
 
 .react-kanban-column-menu .danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text-error) 12%, transparent);
+  background: color-mix(in srgb, var(--rk-danger) 12%, transparent);
+}
+
+.react-kanban-card-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+}
+
+.react-kanban-card-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid var(--rk-border);
+  background: color-mix(in srgb, var(--rk-panel-strong) 98%, black 2%);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+
+.react-kanban-card-menu button {
+  border: 0;
+  background: transparent;
+  color: var(--rk-text);
+  text-align: left;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.react-kanban-card-menu button:hover {
+  background: color-mix(in srgb, var(--rk-accent-soft) 60%, transparent);
+}
+
+.react-kanban-card-menu .danger {
+  color: color-mix(in srgb, var(--rk-danger) 90%, var(--rk-text));
 }
 
 .react-kanban-dialog-backdrop {
@@ -448,7 +518,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   display: grid;
   place-items: center;
   padding: 24px;
-  background: color-mix(in srgb, var(--background-primary) 28%, transparent);
+  background: var(--rk-scrim);
   backdrop-filter: blur(8px);
   z-index: 25;
 }
@@ -460,7 +530,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   overflow: auto;
   border-radius: 20px;
   border: 1px solid var(--rk-border);
-  background: color-mix(in srgb, var(--background-primary) 96%, black 4%);
+  background: color-mix(in srgb, var(--rk-panel-strong) 96%, black 4%);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
   padding: 18px;
 }
@@ -490,7 +560,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
   resize: vertical;
   border-radius: 14px;
   border: 1px solid var(--rk-border);
-  background: var(--background-primary);
+  background: var(--rk-panel-strong);
   color: var(--rk-text);
   padding: 12px 14px;
   font: inherit;
@@ -539,16 +609,16 @@ button.clickable-icon.react-kanban-icon-button:disabled,
 .react-kanban-danger-button {
   border-radius: 12px;
   padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--text-error) 55%, transparent);
-  background: color-mix(in srgb, var(--text-error) 14%, transparent);
-  color: color-mix(in srgb, var(--text-error) 96%, white);
+  border: 1px solid color-mix(in srgb, var(--rk-danger) 55%, transparent);
+  background: color-mix(in srgb, var(--rk-danger) 14%, transparent);
+  color: color-mix(in srgb, var(--rk-danger) 96%, white);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .react-kanban-danger-button:hover {
-  background: color-mix(in srgb, var(--text-error) 20%, transparent);
+  background: color-mix(in srgb, var(--rk-danger) 20%, transparent);
 }
 
 .react-kanban-secondary-button,
@@ -568,7 +638,7 @@ button.clickable-icon.react-kanban-icon-button:disabled,
 .react-kanban-primary-button {
   border: 1px solid color-mix(in srgb, var(--rk-accent) 45%, var(--rk-border));
   background: var(--rk-accent);
-  color: var(--text-on-accent);
+  color: var(--rk-on-accent);
 }
 
 .react-kanban-card-markdown :is(p, ul, ol) {

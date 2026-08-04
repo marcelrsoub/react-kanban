@@ -80,6 +80,39 @@ npm run build
 
 - `npm run typecheck`
 - `npm run build`
+- `npm test`
+
+### Shared board API
+
+The reusable board is exported from the package root after `npm run build`:
+
+```ts
+import {
+  KanbanBoard,
+  parseKanbanMarkdown,
+  serializeKanbanMarkdown,
+  type KanbanBoardModel,
+  type KanbanCard
+} from "obsidian-react-kanban";
+```
+
+The generated JavaScript is `dist/board/index.mjs` and its declarations are in
+`dist/board/types/index.d.ts`. `styles.css` is the shared CSS entrypoint. A
+host supplies a controlled `board`, handles `onChange(nextBoard)`, and injects
+`renderCard(card, content)`. Host-only capabilities such as opening cards,
+native context menus, linked-note creation, notices, and Markdown rendering
+are supplied through callbacks; the shared layer does not access a vault,
+filesystem, network, or Obsidian types. Override `--rk-*` tokens on the board
+root to provide a host theme.
+
+Pass `readOnly: true` to render the board and card content without drag/drop,
+add, edit, delete, rename, or completion controls. The default is editable,
+which preserves the Obsidian adapter’s current behavior.
+
+The Obsidian plugin remains the adapter in `src/BoardView.tsx`: it parses and
+serializes the note, persists through `vault.modify`, renders cards with
+`MarkdownRenderer`, routes internal links, and implements the existing linked
+note settings and native menus. MD Share is not part of this repository yet.
 
 ## Privacy
 
